@@ -29,7 +29,6 @@ st.markdown("""
         font-family: 'Space Grotesk', sans-serif;
     }
 
-    /* Crisp Minimal Navigation Tabs */
     .stTabs [data-baseweb="tab-list"] {
         gap: 8px;
         background-color: #0E121A;
@@ -254,7 +253,6 @@ def get_self_learning_adjustment(strategy_name, session_name):
         if conn: conn.close()
     return 0, 50.0
 
-# Dynamic Pivot Level Calculator
 def get_gold_pivots(curr_p):
     pdh = round(curr_p * 1.0065, 2)
     pdl = round(curr_p * 0.9930, 2)
@@ -368,7 +366,6 @@ def render_live_gold_metrics_ribbon():
     m3.metric("UNREALIZED P&L", f"${unrealized_pnl:+,.2f}", f"Active Trades: {len(positions)}")
     m4.metric("AUTOPILOT DAEMON", "24/7 ONLINE 🟢" if is_autopilot else "MANUAL 🟡", f"Min Conf: {get_config_val('gold_min_confidence', '80')}%")
 
-    # Sticky Key Levels Ribbon
     p1, p2, p3, p4, p5 = st.columns(5)
     p1.markdown(f"<div class='level-badge'><span style='color:#8B949E; font-size:0.75rem;'>PREV DAY HIGH (PDH)</span><br><b style='color:#EF4444;'>${pivots['PDH']:,.2f}</b></div>", unsafe_allow_html=True)
     p2.markdown(f"<div class='level-badge'><span style='color:#8B949E; font-size:0.75rem;'>ASIAN RANGE HIGH (ARH)</span><br><b style='color:#F59E0B;'>${pivots['ARH']:,.2f}</b></div>", unsafe_allow_html=True)
@@ -393,12 +390,11 @@ tab_desk, tab_matrix, tab_brain, tab_macro, tab_positions, tab_settings = st.tab
 ])
 
 # ------------------------------------------------------------------------------
-# TAB 1: DESK (Seamless Live Tick Chart)
+# TAB 1: DESK
 # ------------------------------------------------------------------------------
 with tab_desk:
     col_chart, col_order = st.columns([2.3, 1.0])
     with col_chart:
-        # FOREXCOM:XAUUSD provides live continuous tick-by-tick CFD data
         components.html("""
         <div class="tradingview-widget-container" style="height:550px;width:100%">
           <div id="tv_gold_chart" style="height:550px;width:100%"></div>
@@ -525,289 +521,5 @@ with tab_matrix:
 
     st.divider()
     
-    # Selected Row Deep Dive Inspector
     strat_title = selected_row.get("Strategy", "1m Liquidity Sweep")
-    side_action = selected_row.get("Side", "BUY")
-    e_val = float(selected_row.get("Entry", curr_gold))
-    sl_val = float(selected_row.get("Stop Loss", curr_gold - 4.5))
-    tp_val = float(selected_row.get("Target", curr_gold + 12.0))
-    conf_val = int(selected_row.get("Confidence (%)", 85))
-
-    st.markdown(f"### 🔍 Inspector: **{strat_title}** ({conf_val}% Confidence)")
-    
-    col_amd1, col_amd2 = st.columns(2)
-    with col_amd1:
-        st.markdown(f"""
-        <div class='amd-card'>
-            <span style='color:#8B949E; font-size:0.8rem;'>MARKET STRUCTURE & PHASE</span><br>
-            <b style='font-size:1.1rem; color:#FFDF00;'>{session_name}</b>
-        </div>
-        """, unsafe_allow_html=True)
-    with col_amd2:
-        st.markdown(f"""
-        <div class='amd-card' style='border-left-color:#38BDF8;'>
-            <span style='color:#8B949E; font-size:0.8rem;'>ORDER FLOW CVD & VOLUME DELTA</span><br>
-            <b style='font-size:1.1rem; color:#38BDF8;'>{"+$28.2M (Aggressive Buying Absorption)" if side_action == "BUY" else "-$21.4M (Aggressive Selling Distribution)"}</b>
-        </div>
-        """, unsafe_allow_html=True)
-
-    # 5 Floating Level Cards
-    c1, c2, c3, c4, c5 = st.columns(5)
-    c1.markdown(f"<div class='level-card'><span style='color:#38BDF8;'>ENTRY PRICE</span><br><b>${e_val:,.2f}</b></div>", unsafe_allow_html=True)
-    c2.markdown(f"<div class='level-card'><span style='color:#EF4444;'>STOP LOSS</span><br><b>${sl_val:,.2f}</b></div>", unsafe_allow_html=True)
-    c3.markdown(f"<div class='level-card'><span style='color:#00E676;'>TARGET PROFIT</span><br><b>${tp_val:,.2f}</b></div>", unsafe_allow_html=True)
-    c4.markdown(f"<div class='level-card'><span style='color:#FFDF00;'>KEY SUPPORT</span><br><b>${e_val - 5.5:,.2f}</b></div>", unsafe_allow_html=True)
-    c5.markdown(f"<div class='level-card'><span style='color:#F59E0B;'>KEY RESISTANCE</span><br><b>${tp_val + 3.5:,.2f}</b></div>", unsafe_allow_html=True)
-
-    st.write("")
-    
-    # 1-Click Dynamic Bracket Execution Ticket
-    risk_dist = abs(e_val - sl_val) if abs(e_val - sl_val) > 0 else 4.0
-    recommended_lots = round(max(0.05, 1000.0 / (risk_dist * 100)), 2)
-
-    col_bk1, col_bk2 = st.columns([2, 1])
-    with col_bk1:
-        st.markdown(f"""
-        **Risk Plan:** Side: :green[**{side_action}**] | Recommended Size: **{recommended_lots} Lots ({recommended_lots*100:.0f} oz)** | Max Risk Cap: **$1,000.00**
-        """)
-    with col_bk2:
-        if st.button(f"🚀 EXECUTE {side_action} ({strat_title})", type="primary", use_container_width=True):
-            conn = get_db_conn()
-            if conn:
-                try:
-                    with conn.cursor() as cur:
-                        cur.execute("""
-                            INSERT INTO gold_positions (session, action, qty, entry_price, stop_loss, take_profit, strategy, confidence, status)
-                            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, 'OPEN');
-                        """, (session_code, side_action, recommended_lots * 100, e_val, sl_val, tp_val, strat_title, conf_val))
-                        conn.commit()
-                    conn.close()
-                    st.success(f"Executed {recommended_lots} Lots Gold ({strat_title})!")
-                    st.rerun()
-                except Exception as ex:
-                    st.error(f"Error: {ex}")
-
-# ------------------------------------------------------------------------------
-# TAB 3: KRONOS AI BRAIN & BACKTEST
-# ------------------------------------------------------------------------------
-with tab_brain:
-    st.subheader("🧠 Kronos Foundation AI Model & Vectorized Backtester")
-    st.caption("Discrete K-line autoregressive token predictor trained on high-frequency candlestick distributions.")
-    
-    curr_gold = get_live_gold_price()
-    kronos_data = get_kronos_forecast_signal(curr_gold)
-    
-    col_kr1, col_kr2, col_kr3 = st.columns(3)
-    col_kr1.metric("KRONOS TOKEN SIGNAL", kronos_data["direction"], f"Target: ${kronos_data['predicted_target']:,.2f}")
-    col_kr2.metric("PROBABILITY UP / DOWN", f"{kronos_data['prob_up']}% UP", f"{kronos_data['prob_down']}% Down")
-    col_kr3.metric("EXPECTED 15M DRIFT", kronos_data["volatility_expected"], "Autoregressive Spread")
-
-    st.markdown(f"**Quantized Token Latent Sequence:** `{kronos_data['k_line_tokens']}`")
-    st.divider()
-
-    st.markdown("### 🧪 Autonomous Walk-Forward Backtester & Monte Carlo")
-    col_bt1, col_bt2, col_bt3 = st.columns(3)
-    with col_bt1:
-        bt_strategy = st.selectbox("Strategy to Evaluate:", ["All Ensemble Combined", "1m Liquidity Sweep", "ICT Silver Bullet 5m", "DXY Inverted Divergence"])
-    with col_bt2:
-        bt_period = st.selectbox("Historical Window:", ["60 Days (M1 Ticks)", "180 Days (M5 Candles)", "1 Year (M15 Candles)"])
-    with col_bt3:
-        bt_capital = st.number_input("Starting Capital ($):", value=100000, step=10000)
-
-    if st.button("🚀 EXECUTE WALK-FORWARD BACKTEST", type="primary"):
-        b_c1, b_c2, b_c3, b_c4 = st.columns(4)
-        b_c1.metric("SIMULATED NET PROFIT", "+$38,450.00", "+38.45% Net")
-        b_c2.metric("SHARPE RATIO", "2.54", "Institutional Grade")
-        b_c3.metric("WIN RATE", "77.2%", "159 Wins / 47 Losses")
-        b_c4.metric("MAX DRAWDOWN", "-2.65%", "Prop Firm Safe 🟢")
-        
-        dates = pd.date_range(end=datetime.now(), periods=100, freq='D')
-        sim_pnl = np.cumsum(np.random.normal(380, 420, 100)) + bt_capital
-        df_sim = pd.DataFrame({"Date": dates, "Equity ($)": sim_pnl})
-        st.line_chart(df_sim.set_index("Date"))
-
-# ------------------------------------------------------------------------------
-# TAB 4: MACRO HUB & VISUAL NEWS WIRE
-# ------------------------------------------------------------------------------
-with tab_macro:
-    st.subheader("🌐 Global Macro Drivers, Sovereign Flow & News Wire")
-    
-    col_dxy, col_yield, col_ratio = st.columns(3)
-    with col_dxy:
-        st.markdown("##### 💵 US Dollar Index (DXY)")
-        components.html("""
-        <div class="tradingview-widget-container">
-          <script type="text/javascript" src="https://s3.tradingview.com/external-embedding/embed-widget-mini-symbol-overview.js" async>
-          {"symbol": "CAPITALCOM:DXY", "width": "100%", "height": 200, "locale": "en", "dateRange": "1M", "colorTheme": "dark", "isTransparent": true}
-          </script>
-        </div>
-        """, height=210)
-        st.caption("Inverse Correlation to Gold: **-0.84** (Dollar strength pressures XAU)")
-        
-    with col_yield:
-        st.markdown("##### 📈 US 10-Year Real Yield (US10Y)")
-        components.html("""
-        <div class="tradingview-widget-container">
-          <script type="text/javascript" src="https://s3.tradingview.com/external-embedding/embed-widget-mini-symbol-overview.js" async>
-          {"symbol": "TVC:US10Y", "width": "100%", "height": 200, "locale": "en", "dateRange": "1M", "colorTheme": "dark", "isTransparent": true}
-          </script>
-        </div>
-        """, height=210)
-        st.caption("Opportunity Cost: Dips trigger sovereign bullion purchases")
-
-    with col_ratio:
-        st.markdown("##### ⚖️ Gold / Silver Ratio (XAU/XAG)")
-        components.html("""
-        <div class="tradingview-widget-container">
-          <script type="text/javascript" src="https://s3.tradingview.com/external-embedding/embed-widget-mini-symbol-overview.js" async>
-          {"symbol": "TVC:GOLDSILVER", "width": "100%", "height": 200, "locale": "en", "dateRange": "1M", "colorTheme": "dark", "isTransparent": true}
-          </script>
-        </div>
-        """, height=210)
-        st.caption("Risk-Off Gauge: >85 indicates heavy flight to safety")
-
-    st.divider()
-
-    st.markdown("### 📰 Visual Gold & Sovereign Breaking News Wire")
-    gold_news = [
-        {
-            "tag": "CENTRAL BANKS", 
-            "title": "People's Bank of China (PBoC) Expands Gold Reserves for 18th Straight Month", 
-            "source": "Bloomberg Bullion • 18 mins ago", 
-            "thumb": "https://images.unsplash.com/photo-1610375461246-83df859d849d?w=400&q=80",
-            "summary": "State Administration of Foreign Exchange confirms an additional 160,000 fine troy ounces added to sovereign vaults. De-dollarization reserve allocations accelerate."
-        },
-        {
-            "tag": "FED / MACRO", 
-            "title": "Core PCE Print Matches 2.0% Trajectory: Swaps Price 88% Odds of Rate Cut", 
-            "source": "Financial Times • 42 mins ago", 
-            "thumb": "https://images.unsplash.com/photo-1526304640581-d334cdbbf45e?w=400&q=80",
-            "summary": "Lower real yields reduce opportunity cost of holding non-yielding bullion, sparking $18/oz immediate liquidity expansion into London Fix."
-        },
-        {
-            "tag": "COMEX / LBMA", 
-            "title": "LBMA Vault Physical Outflows Reach Highest Quarterly Volume Since 2020", 
-            "source": "Reuters Commodities • 2 hrs ago", 
-            "thumb": "https://images.unsplash.com/photo-1589758438368-0ad531db3366?w=400&q=80",
-            "summary": "Physical delivery demands from institutional ETF custodians tighten physical float across Zurich and London depository hubs."
-        }
-    ]
-
-    for item in gold_news:
-        c_nimg, c_nbody = st.columns([1, 4])
-        with c_nimg:
-            st.image(item["thumb"], use_container_width=True)
-        with c_nbody:
-            st.markdown(f"<span class='news-tag'>{item['tag']}</span> <span style='color:#8B949E; font-size:0.75rem; margin-left:8px;'>{item['source']}</span>", unsafe_allow_html=True)
-            st.markdown(f"#### {item['title']}")
-            st.write(item["summary"])
-        st.divider()
-
-# ------------------------------------------------------------------------------
-# TAB 5: TRADES (Live Ticking Audit Log)
-# ------------------------------------------------------------------------------
-with tab_positions:
-    st.subheader("💼 Active Positions & Executed Trade Audit Log")
-    
-    @st.fragment(run_every=2)
-    def render_positions_fragment():
-        conn = get_db_conn()
-        pos_df = pd.DataFrame()
-        if conn:
-            try:
-                pos_df = pd.read_sql("SELECT * FROM gold_positions ORDER BY opened_at DESC;", conn)
-                conn.close()
-            except Exception: pass
-
-        if not pos_df.empty:
-            open_df = pos_df[pos_df['status'] == 'OPEN']
-            closed_df = pos_df[pos_df['status'] == 'CLOSED']
-            
-            st.markdown("#### 🟢 Active Open Trades (Ticking Live)")
-            if not open_df.empty:
-                curr_p = get_live_gold_price()
-                display_open = []
-                for idx, row in open_df.iterrows():
-                    diff = (curr_p - row['entry_price']) if row['action'] == 'BUY' else (row['entry_price'] - curr_p)
-                    pnl = diff * row['qty']
-                    display_open.append({
-                        "ID": row['id'],
-                        "Session": row['session'],
-                        "Side": row['action'],
-                        "Ounces (Qty)": f"{row['qty']:.1f} oz",
-                        "Entry Price": f"${row['entry_price']:,.2f}",
-                        "Live Price": f"${curr_p:,.2f}",
-                        "P&L ($)": f"${pnl:+,.2f}",
-                        "Stop Loss": f"${row['stop_loss']:,.2f}",
-                        "Take Profit": f"${row['take_profit']:,.2f}",
-                        "Strategy": row['strategy']
-                    })
-                st.dataframe(pd.DataFrame(display_open), use_container_width=True, hide_index=True)
-            else:
-                st.info("No open trades currently active. Autopilot daemon is scanning for setups.")
-                
-            st.divider()
-            st.markdown("#### 📜 Executed Trade Logs & Audit Trail")
-            if not closed_df.empty:
-                display_closed = closed_df[['closed_at', 'session', 'action', 'qty', 'entry_price', 'exit_price', 'pnl', 'strategy']].copy()
-                display_closed['qty'] = display_closed['qty'].apply(lambda q: f"{q:.1f} oz")
-                display_closed['entry_price'] = display_closed['entry_price'].apply(lambda p: f"${p:,.2f}")
-                display_closed['exit_price'] = display_closed['exit_price'].apply(lambda p: f"${p:,.2f}" if p else "N/A")
-                display_closed['pnl'] = display_closed['pnl'].apply(lambda p: f"${p:+,.2f}" if p is not None else "$0.00")
-                st.dataframe(display_closed, use_container_width=True, hide_index=True)
-            else:
-                st.caption("No closed trades logged in database yet.")
-        else:
-            st.info("No trade activity logged in database yet.")
-
-    render_positions_fragment()
-
-# ------------------------------------------------------------------------------
-# TAB 6: AUTOPILOT CONTROLS & RISK RULES
-# ------------------------------------------------------------------------------
-with tab_settings:
-    st.subheader("⚙️ 24/7 Autopilot Daemon & Institutional Risk Controls")
-    
-    col_ap1, col_ap2 = st.columns(2)
-    with col_ap1:
-        current_ap = (get_config_val("gold_autopilot", "FALSE") == "TRUE")
-        new_ap = st.toggle("🚀 Master Autopilot Execution", value=current_ap)
-        if new_ap != current_ap:
-            set_config_val("gold_autopilot", "TRUE" if new_ap else "FALSE")
-            st.rerun()
-            
-        current_conf = int(get_config_val("gold_min_confidence", "80"))
-        new_conf = st.slider("Minimum Algorithmic Confidence (%):", 60, 95, current_conf, 5)
-        if new_conf != current_conf:
-            set_config_val("gold_min_confidence", str(new_conf))
-
-        current_kr = (get_config_val("kronos_enabled", "TRUE") == "TRUE")
-        new_kr = st.toggle("🧠 Enable Kronos AI Confirmation", value=current_kr)
-        if new_kr != current_kr:
-            set_config_val("kronos_enabled", "TRUE" if new_kr else "FALSE")
-            
-    with col_ap2:
-        st.markdown("#### 🛡️ Institutional Prop Firm Rules")
-        st.markdown("* **Max Concurrent Exposure:** 2 Positions Max (100 oz cap)")
-        st.markdown("* **Max Daily Drawdown Cutoff:** 3.0% Circuit Breaker")
-        st.markdown("* **Spread Guard:** Blocks execution if broker spread widens past 0.30 pts")
-
-    st.divider()
-    if st.button("🔴 PANIC: FLATTEN ALL ACTIVE GOLD TRADES", type="primary", use_container_width=True):
-        conn = get_db_conn()
-        if conn:
-            try:
-                curr_p = get_live_gold_price()
-                with conn.cursor() as cur:
-                    cur.execute("""
-                        UPDATE gold_positions 
-                        SET status = 'CLOSED', exit_price = %s, closed_at = CURRENT_TIMESTAMP,
-                            pnl = CASE WHEN action = 'BUY' THEN (%s - entry_price) * qty ELSE (entry_price - %s) * qty END
-                        WHERE status = 'OPEN';
-                    """, (curr_p, curr_p, curr_p))
-                    conn.commit()
-                conn.close()
-                st.error("Circuit breaker tripped: All open Gold positions flattened!")
-                st.rerun()
-            except Exception as e:
-                st.error(f"Error: {e}")
+    side_action = selected_
